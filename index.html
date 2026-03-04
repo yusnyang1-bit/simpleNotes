@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SimpleNotes v1.7 - DataSync</title>
+    <title>SimpleNotes v1.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root { --bg: #0f172a; --header: #1e293b; --text: #f8fafc; --accent: #6366f1; --border: #334155; }
-        :root.light { --bg: #f8fafc; --header: #ffffff; --text: #0f172a; --accent: #3b82f6; --border: #e2e8f0; }
+        :root { --bg: #0f172a; --header: #1e293b; --text: #f8fafc; --accent: #6366f1; --border: #334155; --cell-bg: #1e293b; }
+        :root.light { --bg: #f8fafc; --header: #ffffff; --text: #0f172a; --accent: #3b82f6; --border: #e2e8f0; --cell-bg: #ffffff; }
+        
         body { background-color: var(--bg); color: var(--text); font-family: system-ui, sans-serif; transition: all 0.3s; }
         header { background-color: var(--header); border-bottom: 2px solid var(--accent); }
         ::-webkit-scrollbar { display: none; }
@@ -25,11 +26,19 @@
             background: linear-gradient(to top, rgba(var(--tab-color), 0.1), transparent);
         }
 
+        /* 表格對比優化 */
+        .table-wrapper { overflow-auto; border-radius: 12px; }
+        table { border-collapse: collapse; min-width: 100%; background-color: var(--border); }
+        td { border: 1px solid var(--border); background-color: var(--cell-bg); }
+        td input { 
+            width: 100%; padding: 12px 8px; 
+            background-color: var(--cell-bg); 
+            color: var(--text); 
+            border: none; outline: none; 
+        }
+
         .btn-vibrant:active { transform: scale(0.9); }
-        .todo-item.completed span { text-decoration: line-through; opacity: 0.5; }
-        
-        /* 項目符號樣式 */
-        .bullet-item::before { content: "•"; color: var(--tab-color); font-weight: bold; display: inline-block; width: 1em; margin-left: -1em; }
+        .bullet-item::before { content: "•"; color: var(--tab-color); margin-right: 8px; font-weight: bold; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -37,13 +46,18 @@
 <header class="p-3 shadow-xl z-20 flex flex-col gap-3">
     <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
-            <div class="bg-indigo-600 p-1.5 rounded-lg shadow-lg">
+            <div class="bg-indigo-600 p-1.5 rounded-lg">
                 <i data-lucide="notebook" class="w-5 h-5 text-white"></i>
             </div>
-            <span class="text-xs font-black tracking-tighter uppercase opacity-80">SimpleNotes v1.7</span>
+            <div class="flex flex-col leading-tight">
+                <span class="text-sm font-black tracking-tight text-indigo-500 uppercase">SimpleNotes</span>
+                <span class="text-[9px] font-mono opacity-50">Version 1.8.0</span>
+            </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-amber-500"><i data-lucide="sparkles" class="w-5 h-5"></i></button>
+            <button onclick="toggleTheme()" id="theme-btn" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-yellow-500 shadow-inner">
+                <i data-lucide="lightbulb" class="w-5 h-5"></i>
+            </button>
             <button onclick="document.getElementById('import-file').click()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-blue-500"><i data-lucide="upload" class="w-5 h-5"></i></button>
             <button onclick="exportData()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-green-500"><i data-lucide="download" class="w-5 h-5"></i></button>
             <button onclick="saveData()" class="bg-indigo-600 text-white p-2 rounded-lg shadow-lg btn-vibrant"><i data-lucide="save" class="w-5 h-5"></i></button>
@@ -52,10 +66,10 @@
     </div>
 
     <div class="flex gap-2">
-        <button onclick="addTab('note')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="file-text" class="w-6 h-6 text-blue-500"></i></button>
-        <button onclick="addTab('sheet')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="grid-3x3" class="w-6 h-6 text-emerald-500"></i></button>
-        <button onclick="addTab('todo')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="check-circle" class="w-6 h-6 text-amber-500"></i></button>
-        <button onclick="addTab('list')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="list" class="w-6 h-6 text-pink-500"></i></button>
+        <button onclick="addTab('note')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="file-text" class="w-6 h-6 text-blue-500"></i></button>
+        <button onclick="addTab('sheet')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="grid-3x3" class="w-6 h-6 text-emerald-500"></i></button>
+        <button onclick="addTab('todo')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="check-circle" class="w-6 h-6 text-amber-500"></i></button>
+        <button onclick="addTab('list')" class="flex-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 flex justify-center btn-vibrant"><i data-lucide="list" class="w-6 h-6 text-pink-500"></i></button>
     </div>
 </header>
 
@@ -64,7 +78,9 @@
 <main id="editor-container" class="flex-1 p-3 overflow-hidden"></main>
 
 <script>
-    let tabs = JSON.parse(localStorage.getItem('roberts_v17_data')) || [];
+    let tabs = JSON.parse(localStorage.getItem('roberts_v18_data')) || [
+        { id: '1', title: '我的記事', type: 'note', content: '' }
+    ];
     let activeTabId = tabs.length > 0 ? tabs[0].id : null;
     let currentTheme = localStorage.getItem('sn_theme') || 'dark';
 
@@ -81,36 +97,34 @@
 
     function renderTabs() {
         const tabBar = document.getElementById('tab-bar');
-        tabBar.innerHTML = tabs.map((tab, idx) => {
-            let pressTimer;
-            return `
-                <div class="group flex items-center px-4 py-3 cursor-pointer transition-all tab-${tab.type} ${activeTabId === tab.id ? 'active-tab' : 'text-gray-400 opacity-60'}" 
-                     onclick="switchTab('${tab.id}')"
-                     onmousedown="startTabPress('${tab.id}', ${idx})" 
-                     ontouchstart="startTabPress('${tab.id}', ${idx})">
-                    <span class="text-xs font-bold" ondblclick="renameTab('${tab.id}')">${tab.title}</span>
-                    <i data-lucide="x" onclick="deleteTab(event, '${tab.id}')" class="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 hover:text-red-500"></i>
-                </div>
-            `;
-        }).join('');
+        tabBar.innerHTML = tabs.map((tab, idx) => `
+            <div class="group flex items-center px-4 py-3 cursor-pointer transition-all tab-${tab.type} ${activeTabId === tab.id ? 'active-tab' : 'text-gray-400 opacity-60'}" 
+                 onclick="switchTab('${tab.id}')"
+                 oncontextmenu="event.preventDefault(); moveTab(${idx}, -1)" 
+                 onmousedown="startLongPress(${idx})">
+                <span class="text-xs font-bold" ondblclick="renameTab('${tab.id}')">${tab.title}</span>
+                <i data-lucide="x" onclick="deleteTab(event, '${tab.id}')" class="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 hover:text-red-500"></i>
+            </div>
+        `).join('');
     }
 
-    // --- 長按移動邏輯 ---
-    function startTabPress(id, index) {
-        const timer = setTimeout(() => {
-            const dir = confirm("向左移動分頁？ (取消則向右移動)");
-            moveTab(index, dir ? -1 : 1);
-        }, 800);
-        const clear = () => clearTimeout(timer);
-        window.addEventListener('mouseup', clear, {once: true});
-        window.addEventListener('touchend', clear, {once: true});
+    // --- 分頁長按移動邏輯 ---
+    let pressTimer;
+    function startLongPress(index) {
+        pressTimer = setTimeout(() => {
+            const res = confirm("分頁排序：確定要將此分頁向右移動嗎？(取消則向左移動)");
+            moveTab(index, res ? 1 : -1);
+        }, 700);
+        const cancel = () => clearTimeout(pressTimer);
+        window.addEventListener('mouseup', cancel, {once:true});
+        window.addEventListener('touchend', cancel, {once:true});
     }
+
     function moveTab(index, direction) {
         const newIndex = index + direction;
         if (newIndex >= 0 && newIndex < tabs.length) {
-            const temp = tabs[index];
-            tabs[index] = tabs[newIndex];
-            tabs[newIndex] = temp;
+            const element = tabs.splice(index, 1)[0];
+            tabs.splice(newIndex, 0, element);
             render();
         }
     }
@@ -118,10 +132,10 @@
     function renderEditor() {
         const container = document.getElementById('editor-container');
         const activeTab = tabs.find(t => t.id === activeTabId);
-        if (!activeTab) return container.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-10"><i data-lucide="box" class="w-20 h-20"></i></div>`;
+        if (!activeTab) return container.innerHTML = "";
 
         if (activeTab.type === 'note') {
-            container.innerHTML = `<textarea oninput="updateContent(this.value)" class="w-full h-full p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 outline-none text-base" placeholder="開始筆記...">${activeTab.content}</textarea>`;
+            container.innerHTML = `<textarea oninput="updateContent(this.value)" class="w-full h-full p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 text-inherit outline-none border border-transparent focus:border-indigo-500/30" placeholder="寫點什麼...">${activeTab.content}</textarea>`;
         } else if (activeTab.type === 'sheet') {
             let html = `<div class="h-full bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col shadow-inner">
                 <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex gap-2">
@@ -130,54 +144,67 @@
                 </div>
                 <div class="overflow-auto flex-1"><table><tbody>${activeTab.content.map((row, rIdx) => `<tr>${row.map((cell, cIdx) => `<td><input value="${cell}" oninput="updateSheet(${rIdx}, ${cIdx}, this.value)"></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
             container.innerHTML = html;
-        } else if (activeTab.type === 'todo') {
+        } else if (activeTab.type === 'todo' || activeTab.type === 'list') {
+            const isTodo = activeTab.type === 'todo';
+            const colorClass = isTodo ? 'text-amber-500' : 'text-pink-500';
+            const bgClass = isTodo ? 'bg-amber-500' : 'bg-pink-500';
+            
+            let itemsHtml = activeTab.content.map((item, idx) => `
+                <div class="group flex items-center gap-3 p-3 bg-white dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                    ${isTodo ? `<input type="checkbox" class="w-5 h-5 accent-amber-500" ${item.completed?'checked':''} onchange="toggleTodo(${idx})">` : `<div class="bullet-item"></div>`}
+                    <span class="flex-1 text-sm text-left ${isTodo && item.completed ? 'line-through opacity-40' : ''}">${isTodo ? item.text : item}</span>
+                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="reorderItem(${idx}, -1)" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+                        <button onclick="reorderItem(${idx}, 1)" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+                        <button onclick="removeItem(${idx})" class="p-1 text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
             container.innerHTML = `<div class="h-full flex flex-col gap-3">
                 <div class="flex gap-2">
-                    <input type="text" id="todo-input" class="flex-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 outline-none" placeholder="新增事項..." onkeypress="if(event.key==='Enter') addTodo()">
-                    <button onclick="clearCompleted()" class="p-3 text-red-500 bg-red-500/10 rounded-xl" title="清除已完成"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
-                    <button onclick="addTodo()" class="bg-amber-500 text-white p-3 rounded-xl shadow-lg"><i data-lucide="plus" class="w-6 h-6"></i></button>
+                    <input type="text" id="item-input" class="flex-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 outline-none text-inherit" placeholder="新增${activeTab.title}..." onkeypress="if(event.key==='Enter') addItem()">
+                    ${isTodo ? `<button onclick="clearCompleted()" class="p-3 text-red-500 bg-red-500/10 rounded-xl"><i data-lucide="trash-2" class="w-6 h-6"></i></button>` : ''}
+                    <button onclick="addItem()" class="${bgClass} text-white p-3 rounded-xl shadow-lg"><i data-lucide="plus" class="w-6 h-6"></i></button>
                 </div>
-                <div class="flex-1 overflow-y-auto space-y-2">${activeTab.content.map((item, idx) => `<div class="todo-item ${item.completed ? 'completed' : ''} flex items-center gap-3 p-4 bg-white dark:bg-gray-800/20 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700"><input type="checkbox" class="w-5 h-5 accent-amber-500" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${idx})"><span class="flex-1 text-sm">${item.text}</span><button onclick="removeTodo(${idx})" class="text-gray-400"><i data-lucide="x" class="w-4 h-4"></i></button></div>`).join('')}</div></div>`;
-        } else if (activeTab.type === 'list') {
-            container.innerHTML = `<div class="h-full flex flex-col gap-3">
-                <div class="flex gap-2">
-                    <input type="text" id="list-input" class="flex-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 outline-none" placeholder="新增項目..." onkeypress="if(event.key==='Enter') addListItem()">
-                    <button onclick="addListItem()" class="bg-pink-500 text-white p-3 rounded-xl shadow-lg"><i data-lucide="plus" class="w-6 h-6"></i></button>
-                </div>
-                <div class="flex-1 overflow-y-auto space-y-3 pl-5">${activeTab.content.map((item, idx) => `<div class="bullet-item relative text-sm group flex items-center justify-between"><span>${item}</span><button onclick="removeListItem(${idx})" class="opacity-0 group-hover:opacity-100 text-red-400"><i data-lucide="minus-circle" class="w-4 h-4"></i></button></div>`).join('')}</div></div>`;
+                <div class="flex-1 overflow-y-auto space-y-2 pb-20">${itemsHtml}</div>
+            </div>`;
         }
         lucide.createIcons();
     }
 
-    // --- 各類功能 ---
+    // --- 功能邏輯 ---
+    function addItem() {
+        const input = document.getElementById('item-input');
+        if (!input.value.trim()) return;
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab.type === 'todo') tab.content.push({ text: input.value, completed: false });
+        else tab.content.push(input.value);
+        input.value = ''; render();
+    }
+    function reorderItem(index, direction) {
+        const content = tabs.find(t => t.id === activeTabId).content;
+        const newIndex = index + direction;
+        if (newIndex >= 0 && newIndex < content.length) {
+            [content[index], content[newIndex]] = [content[newIndex], content[index]];
+            render();
+        }
+    }
+    function removeItem(idx) { tabs.find(t => t.id === activeTabId).content.splice(idx, 1); render(); }
+    function toggleTodo(idx) { 
+        const tab = tabs.find(t => t.id === activeTabId);
+        tab.content[idx].completed = !tab.content[idx].completed; render(); 
+    }
+    function clearCompleted() {
+        const tab = tabs.find(t => t.id === activeTabId);
+        tab.content = tab.content.filter(i => !i.completed); render();
+    }
     function addTab(type) {
         const id = Date.now().toString();
         const titles = { note: '記事', sheet: '表格', todo: '待辦', list: '項目' };
-        const content = type === 'sheet' ? [['', ''], ['', '']] : (type === 'todo' || type === 'list' ? [] : '');
-        tabs.push({ id, title: titles[type], type, content });
+        tabs.push({ id, title: titles[type], type, content: type==='sheet'?[['',''],['','']]:[] });
         activeTabId = id; render();
     }
-
-    function addTodo() { 
-        const input = document.getElementById('todo-input');
-        if (!input.value.trim()) return;
-        tabs.find(t => t.id === activeTabId).content.push({ text: input.value, completed: false });
-        input.value = ''; render();
-    }
-    function toggleTodo(idx) { tabs.find(t => t.id === activeTabId).content[idx].completed = !tabs.find(t => t.id === activeTabId).content[idx].completed; render(); }
-    function clearCompleted() {
-        const tab = tabs.find(t => t.id === activeTabId);
-        tab.content = tab.content.filter(i => !i.completed);
-        render();
-    }
-    function addListItem() {
-        const input = document.getElementById('list-input');
-        if (!input.value.trim()) return;
-        tabs.find(t => t.id === activeTabId).content.push(input.value);
-        input.value = ''; render();
-    }
-    function removeListItem(idx) { tabs.find(t => t.id === activeTabId).content.splice(idx, 1); render(); }
-    function removeTodo(idx) { tabs.find(t => t.id === activeTabId).content.splice(idx, 1); render(); }
     function switchTab(id) { activeTabId = id; render(); }
     function renameTab(id) { const tab = tabs.find(t => t.id === id); const n = prompt('新名稱：', tab.title); if(n) {tab.title=n; render();} }
     function deleteTab(e, id) { e.stopPropagation(); if(confirm('刪除？')) { tabs = tabs.filter(t => t.id !== id); if(activeTabId===id) activeTabId = tabs[0]?.id || null; render(); } }
@@ -185,26 +212,29 @@
     function updateSheet(r, c, v) { tabs.find(t => t.id === activeTabId).content[r][c] = v; }
     function addRow() { const t = tabs.find(t => t.id === activeTabId); t.content.push(new Array(t.content[0].length).fill('')); render(); }
     function addCol() { tabs.find(t => t.id === activeTabId).content.forEach(r => r.push('')); render(); }
-    function toggleTheme() { currentTheme = currentTheme==='dark'?'light':'dark'; document.documentElement.classList.toggle('light'); localStorage.setItem('sn_theme', currentTheme); }
-    function saveData() { localStorage.setItem('roberts_v17_data', JSON.stringify(tabs)); alert('✅ 已儲存'); }
     
+    function toggleTheme() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.classList.toggle('light');
+        localStorage.setItem('sn_theme', currentTheme);
+        render(); // 重新渲染圖示
+    }
+
     function exportData() {
         const blob = new Blob([JSON.stringify(tabs)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `SN_Backup_${new Date().toLocaleDateString()}.json`; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `SN_V18_${new Date().toISOString().slice(0,10)}.json`; a.click();
     }
 
     function importData(e) {
         const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                tabs = JSON.parse(event.target.result);
-                activeTabId = tabs[0]?.id || null;
-                render();
-                alert('📥 匯入成功！');
-            } catch (err) { alert('❌ 檔案格式錯誤'); }
+        reader.onload = (ev) => {
+            try { tabs = JSON.parse(ev.target.result); activeTabId = tabs[0]?.id || null; render(); alert('📥 匯入成功'); } 
+            catch { alert('❌ 失敗'); }
         };
         reader.readAsText(e.target.files[0]);
     }
+
+    function saveData() { localStorage.setItem('roberts_v18_data', JSON.stringify(tabs)); alert('✅ 儲存成功'); }
 
     init();
 </script>
