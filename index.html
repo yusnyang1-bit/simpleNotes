@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SimpleNotes v1.5 - Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #0f172a; --header: #1e293b; --text: #f8fafc;
+            --accent: #3b82f6; --border: #334155; --input-bg: #1e293b;
+            --card-bg: #1e293b;
+        }
+        :root.light {
+            --bg: #f8fafc; --header: #ffffff; --text: #0f172a;
+            --accent: #2563eb; --border: #e2e8f0; --input-bg: #ffffff;
+            --card-bg: #f1f5f9;
+        }
+
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; transition: all 0.3s ease; }
+        header { background-color: var(--header); border-bottom: 1px solid var(--border); }
+        
+        /* 橫向滾動優化 */
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        
+        /* 表格樣式 */
+        table { border-collapse: collapse; min-width: 100%; table-layout: fixed; }
+        td { border: 1px solid var(--border); min-width: 100px; }
+        td input { width: 100%; padding: 12px 8px; background: transparent; color: inherit; border: none; outline: none; font-size: 14px; }
+        td input:focus { background-color: rgba(59, 130, 246, 0.1); }
+
+        /* 分頁激活態 */
+        .active-tab { 
+            background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.1));
+            border-bottom: 3px solid var(--accent); 
+            color: var(--accent); 
+            font-weight: 700;
+        }
+
+        .btn-bounce:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<header class="p-4 shadow-lg z-20 flex flex-col gap-4">
+    <div class="flex justify-between items-center">
+        <div class="flex flex-col">
+            <span class="text-[10px] font-bold text-blue-500 tracking-widest uppercase">SimpleNotes</span>
+            <span class="text-xs text-gray-400 font-mono">v1.5 Stable</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleTheme()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-yellow-500 dark:text-blue-400 btn-bounce">
+                <i data-lucide="sun-moon" class="w-5 h-5"></i>
+            </button>
+            <button onclick="saveData()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold shadow-lg flex items-center gap-2 btn-bounce">
+                <i data-lucide="cloud-upload" class="w-5 h-5"></i> 儲存
+            </button>
+        </div>
+    </div>
+
+    <div class="flex gap-2">
+        <button onclick="addTab('note')" class="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl flex justify-center items-center gap-2 btn-bounce">
+            <i data-lucide="file-text" class="w-5 h-5 text-blue-500"></i> <span class="text-sm">記事</span>
+        </button>
+        <button onclick="addTab('sheet')" class="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl flex justify-center items-center gap-2 btn-bounce">
+            <i data-lucide="layout-grid" class="w-5 h-5 text-green-500"></i> <span class="text-sm">表格</span>
+        </button>
+    </div>
+</header>
+
+<div id="tab-bar" class="flex px-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto scroll-hide whitespace-nowrap bg-opacity-50">
+</div>
+
+<main id="editor-container" class="flex-1 p-3 overflow-hidden">
+</main>
+
+<script>
+    let tabs = JSON.parse(localStorage.getItem('roberts_v15_data')) || [
+        { id: '1', title: '我的筆記', type: 'note', content: '' },
+        { id: '2', title: '專案預算', type: 'sheet', content: [['項目', '金額'], ['', '']] }
+    ];
+    let activeTabId = tabs.length > 0 ? tabs[0].id : null;
+    let currentTheme = localStorage.getItem('sn_theme') || 'dark';
+
+    function init() {
+        if (currentTheme === 'light') document.documentElement.classList.add('light');
+        render();
+    }
+
+    function render() {
+        renderTabs();
+        renderEditor();
+        lucide.createIcons();
+    }
+
+    function renderTabs() {
+        const tabBar = document.getElementById('tab-bar');
+        tabBar.innerHTML = tabs.map(tab => `
+            <div class="group flex items-center px-4 py-3 cursor-pointer transition-all ${activeTabId === tab.id ? 'active-tab' : 'text-gray-400'}" onclick="switchTab('${tab.id}')">
+                <i data-lucide="${tab.type === 'note' ? 'file-text' : 'table-2'}" class="w-4 h-4 mr-2"></i>
+                <span class="text-sm" ondblclick="renameTab('${tab.id}')">${tab.title}</span>
+                <button onclick="deleteTab(event, '${tab.id}')" class="ml-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function renderEditor() {
+        const container = document.getElementById('editor-container');
+        const activeTab = tabs.find(t => t.id === activeTabId);
+        
+        if (!activeTab) {
+            container.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-gray-500"><i data-lucide="plus-circle" class="w-12 h-12 mb-2 opacity-20"></i>點擊上方按鈕開始</div>`;
+            return;
+        }
+
+        if (activeTab.type === 'note') {
+            container.innerHTML = `<textarea oninput="updateContent(this.value)" class="w-full h-full p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 shadow-inner outline-none resize-none text-base" placeholder="在此輸入內容...">${activeTab.content}</textarea>`;
+        } else {
+            let tableHtml = `
+                <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-inner">
+                    <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+                        <button onclick="addRow()" class="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg text-xs font-bold">+ 行</button>
+                        <button onclick="addCol()" class="bg-green-500/10 text-green-500 px-3 py-1 rounded-lg text-xs font-bold">+ 列</button>
+                    </div>
+                    <div class="table-wrapper flex-1">
+                        <table>
+                            <tbody>`;
+            activeTab.content.forEach((row, rIdx) => {
+                tableHtml += `<tr>`;
+                row.forEach((cell, cIdx) => {
+                    tableHtml += `<td><input value="${cell}" oninput="updateSheet(${rIdx}, ${cIdx}, this.value)"></td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `</tbody></table></div></div>`;
+            container.innerHTML = tableHtml;
+        }
+    }
+
+    // --- 功能邏輯 ---
+    function toggleTheme() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.classList.toggle('light');
+        localStorage.setItem('sn_theme', currentTheme);
+    }
+
+    function addTab(type) {
+        const id = Date.now().toString();
+        const title = (type === 'note' ? '新記事 ' : '新表格 ') + (tabs.length + 1);
+        tabs.push({ id, title, type, content: type === 'note' ? '' : [['', ''], ['', '']] });
+        activeTabId = id;
+        render();
+    }
+
+    function renameTab(id) {
+        const tab = tabs.find(t => t.id === id);
+        const newTitle = prompt('請輸入新名稱：', tab.title);
+        if (newTitle) {
+            tab.title = newTitle;
+            render();
+        }
+    }
+
+    function deleteTab(e, id) {
+        e.stopPropagation();
+        if (confirm('確定要刪除這個分頁嗎？資料將無法恢復。')) {
+            tabs = tabs.filter(t => t.id !== id);
+            if (activeTabId === id) activeTabId = tabs.length > 0 ? tabs[0].id : null;
+            render();
+        }
+    }
+
+    function switchTab(id) { activeTabId = id; render(); }
+    function updateContent(val) { tabs.find(t => t.id === activeTabId).content = val; }
+    function updateSheet(r, c, val) { tabs.find(t => t.id === activeTabId).content[r][c] = val; }
+    function addRow() { 
+        const tab = tabs.find(t => t.id === activeTabId);
+        const cols = tab.content[0] ? tab.content[0].length : 1;
+        tab.content.push(new Array(cols).fill(''));
+        render();
+    }
+    function addCol() {
+        const tab = tabs.find(t => t.id === activeTabId);
+        tab.content.forEach(row => row.push(''));
+        render();
+    }
+    function saveData() {
+        localStorage.setItem('roberts_v15_data', JSON.stringify(tabs));
+        alert('✨ 資料已安全儲存！');
+    }
+
+    init();
+</script>
+</body>
+</html>
